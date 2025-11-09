@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pattern Matching Visualizer</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Space Grotesk", sans-serif;
+        background: #0a0118;
+        color: #e0e7ff;
+        min-height: 100vh;
+        overflow-x: hidden;
+        position: relative;
+        transition: background 0.4s, color 0.4s;
+      }
+
+      body.light-mode {
+        background: #f8fafc;
+        color: #0f172a;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+            circle at 20% 50%,
+            rgba(139, 92, 246, 0.15) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 80%,
+            rgba(236, 72, 153, 0.15) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 40% 90%,
+            rgba(59, 130, 246, 0.1) 0%,
+            transparent 50%
+          );
+        pointer-events: none;
+      }
+
+      .container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 20px;
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      .theme-switcher {
+        position: fixed;
+        top: 15px;
+        right: 20px;
+        width: 60px;
+        height: 30px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(139, 92, 246, 0.3);
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.4s;
+        z-index: 1000;
+      }
+
+      .theme-switcher::after {
+        content: "🌙";
+        position: absolute;
+        top: 2px;
+        left: 3px;
+        width: 22px;
+        height: 22px;
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.4s;
+        font-size: 12px;
+      }
+
+      body.light-mode .theme-switcher::after {
+        content: "☀️";
+        left: 31px;
+      }
+
+      .theme-switcher:hover {
+        border-color: rgba(139, 92, 246, 0.6);
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+      }
+
+      .masthead {
+        text-align: center;
+        margin-bottom: 15px;
+        position: relative;
+      }
+
+      .masthead h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #8b5cf6, #ec4899, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.03em;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+      }
+
+      .masthead .tagline {
+        font-size: 1rem;
+        color: #94a3b8;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+      }
+
+      .main-content {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 15px;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .panel {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 10px;
+        backdrop-filter: blur(20px);
+        transition: all 0.4s;
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      body.light-mode .panel {
+        background: rgba(255, 255, 255, 0.6);
+        border-color: rgba(139, 92, 246, 0.3);
+      }
+
+      .panel::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+
+      .panel:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+        box-shadow: 0 10px 30px rgba(139, 92, 246, 0.15);
+      }
+
+      .panel:hover::before {
+        opacity: 1;
+      }
+
+      .panel-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #a78bfa;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .field {
+        position: relative;
+        margin-bottom: 15px;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #a78bfa;
+      }
+
+      .field input {
+        width: 100%;
+        padding: 12px 15px;
+        background: rgba(139, 92, 246, 0.05);
+        border: 2px solid rgba(139, 92, 246, 0.2);
+        border-radius: 10px;
+        color: #e0e7ff;
+        font-size: 1rem;
+        font-family: "Courier New", monospace;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      body.light-mode .field input {
+        color: #0f172a;
+        background: rgba(139, 92, 246, 0.08);
+      }
+
+      .field input:focus {
+        outline: none;
+        border-color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.1);
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+      }
+
+      .field.error input {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+      }
+
+      .error-message {
+        color: #ef4444;
+        font-size: 0.75rem;
+        margin-top: 5px;
+        display: none;
+      }
+
+      .field.error .error-message {
+        display: block;
+      }
+
+      .algo-picker {
+        width: 100%;
+        padding: 12px 15px;
+        background: rgba(139, 92, 246, 0.1);
+        border: 2px solid rgba(139, 92, 246, 0.3);
+        border-radius: 10px;
+        color: #e0e7ff;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: "Space Grotesk", sans-serif;
+        transition: all 0.3s;
+        margin-bottom: 15px;
+      }
+
+      body.light-mode .algo-picker {
+        color: #0f172a;
+      }
+
+      .algo-picker:focus {
+        outline: none;
+        border-color: #8b5cf6;
+      }
+
+      .algo-picker option {
+        background: #1e1b4b;
+        color: white;
+      }
+
+      .action-btn {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: "Space Grotesk", sans-serif;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+      }
+
+      .action-btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .action-btn:active {
+        transform: translateY(-1px);
+      }
+
+      .action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-run {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+      }
+
+      .btn-halt {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
+      }
+
+      .btn-next {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn-restart {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+      }
+
+      .velocity-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: rgba(139, 92, 246, 0.05);
+        border-radius: 10px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        margin-top: 10px;
+      }
+
+      .velocity-control label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #a78bfa;
+      }
+
+      .velocity-control input {
+        flex: 1;
+      }
+
+      .velocity-display {
+        font-weight: 700;
+        color: #8b5cf6;
+        min-width: 40px;
+        font-size: 0.8rem;
+      }
+
+      .visualization {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .stage {
+        padding: 15px;
+        min-height: 200px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex: 1;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+      }
+
+      .stage::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .stage::-webkit-scrollbar-track {
+        background: rgba(139, 92, 246, 0.1);
+        border-radius: 3px;
+      }
+
+      .stage::-webkit-scrollbar-thumb {
+        background: rgba(139, 92, 246, 0.3);
+        border-radius: 3px;
+      }
+
+      .stage::-webkit-scrollbar-thumb:hover {
+        background: rgba(139, 92, 246, 0.5);
+      }
+
+      .sequence-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: max-content;
+        padding-bottom: 30px;
+      }
+
+      .sequence {
+        display: flex;
+        gap: 5px;
+        font-family: "Courier New", monospace;
+        position: relative;
+        margin-bottom: 30px;
+      }
+
+      .pattern-overlay {
+        position: absolute;
+        top: 40px;
+        left: 0;
+        right: 0;
+        display: flex;
+        gap: 5px;
+        pointer-events: none;
+      }
+
+      .pattern-shift-indicator {
+        position: absolute;
+        top: -20px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .pattern-shift-indicator.active {
+        opacity: 1;
+      }
+
+      .token {
+        width: 40px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+        position: relative;
+        transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        background: rgba(255, 255, 255, 0.03);
+        clip-path: polygon(
+          10% 0%,
+          90% 0%,
+          100% 25%,
+          100% 75%,
+          90% 100%,
+          10% 100%,
+          0% 75%,
+          0% 25%
+        );
+      }
+
+      body.light-mode .token {
+        background: rgba(139, 92, 246, 0.08);
+        color: #0f172a;
+      }
+
+      .token .pos {
+        position: absolute;
+        bottom: -20px;
+        font-size: 0.6rem;
+        color: #64748b;
+        font-weight: 600;
+      }
+
+      .token.active {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        color: #1e293b;
+        transform: scale(1.2) rotate(5deg);
+        box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+      }
+
+      .token.hit {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        transform: scale(1.15);
+      }
+
+      body.light-mode .token.active {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        color: #1e293b;
+        box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+      }
+
+      body.light-mode .token.hit {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+      }
+
+      body.light-mode .token.miss {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+      }
+
+      body.light-mode .token.success {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+      }
+
+      .token.miss {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        transform: scale(1.15) rotate(-5deg);
+      }
+
+      .token.success {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        animation: celebrate 0.8s;
+      }
+
+      @keyframes celebrate {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        25% {
+          transform: scale(1.3) rotate(10deg);
+        }
+        75% {
+          transform: scale(1.3) rotate(-10deg);
+        }
+      }
+
+      .broadcast {
+        padding: 12px 15px;
+        background: linear-gradient(
+          135deg,
+          rgba(139, 92, 246, 0.1),
+          rgba(236, 72, 153, 0.1)
+        );
+        border-left: 4px solid #8b5cf6;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin: 15px 0;
+      }
+
+      .insight {
+        padding: 15px;
+        background: linear-gradient(
+          135deg,
+          rgba(236, 72, 153, 0.1),
+          rgba(59, 130, 246, 0.1)
+        );
+        border-radius: 10px;
+        border: 1px solid rgba(236, 72, 153, 0.2);
+        margin-top: 10px;
+      }
+
+      body.light-mode .insight {
+        background: linear-gradient(
+          135deg,
+          rgba(236, 72, 153, 0.15),
+          rgba(59, 130, 246, 0.15)
+        );
+      }
+
+      .insight h4 {
+        margin-bottom: 10px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #ec4899;
+      }
+
+      .insight p {
+        line-height: 1.5;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+      }
+
+      body.light-mode .insight p {
+        color: #334155;
+      }
+
+      .accent {
+        background: linear-gradient(
+          135deg,
+          rgba(251, 191, 36, 0.2),
+          rgba(245, 158, 11, 0.2)
+        );
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+        color: #fbbf24;
+      }
+
+      body.light-mode .accent {
+        color: #d97706;
+        background: linear-gradient(
+          135deg,
+          rgba(251, 191, 36, 0.3),
+          rgba(245, 158, 11, 0.3)
+        );
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .metric {
+        background: linear-gradient(
+          135deg,
+          rgba(139, 92, 246, 0.05),
+          rgba(236, 72, 153, 0.05)
+        );
+        padding: 10px;
+        border-radius: 10px;
+        text-align: center;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        transition: all 0.4s;
+        position: relative;
+        overflow: hidden;
+      }
+
+      body.light-mode .metric {
+        background: linear-gradient(
+          135deg,
+          rgba(139, 92, 246, 0.08),
+          rgba(236, 72, 153, 0.08)
+        );
+      }
+
+      .metric::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(139, 92, 246, 0.1),
+          transparent
+        );
+        transition: left 0.6s;
+      }
+
+      .metric:hover::before {
+        left: 100%;
+      }
+
+      .metric:hover {
+        border-color: rgba(139, 92, 246, 0.5);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(139, 92, 246, 0.2);
+      }
+
+      .metric-num {
+        font-size: 1.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 5px;
+      }
+
+      .metric-name {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #64748b;
+        font-weight: 600;
+      }
+
+      .data-section {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(139, 92, 246, 0.2);
+      }
+
+      .section-head {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #a78bfa;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .data-grid {
+        background: rgba(139, 92, 246, 0.03);
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+      }
+
+      body.light-mode .data-grid {
+        background: rgba(139, 92, 246, 0.05);
+      }
+
+      .data-grid table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .data-grid th,
+      .data-grid td {
+        padding: 8px 10px;
+        text-align: center;
+        border: 1px solid rgba(139, 92, 246, 0.1);
+        font-size: 0.8rem;
+      }
+
+      .data-grid th {
+        background: linear-gradient(
+          135deg,
+          rgba(139, 92, 246, 0.2),
+          rgba(236, 72, 153, 0.2)
+        );
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #a78bfa;
+      }
+
+      .data-grid td {
+        background: rgba(255, 255, 255, 0.02);
+        font-family: "Courier New", monospace;
+        font-weight: 700;
+      }
+
+      body.light-mode .data-grid td {
+        background: rgba(139, 92, 246, 0.03);
+        color: #0f172a;
+      }
+
+      .data-grid td.spotlight {
+        background: linear-gradient(
+          135deg,
+          rgba(251, 191, 36, 0.2),
+          rgba(245, 158, 11, 0.2)
+        );
+        color: #fbbf24;
+        border: 2px solid #fbbf24;
+        font-weight: 800;
+      }
+
+      body.light-mode .data-grid td.spotlight {
+        background: linear-gradient(
+          135deg,
+          rgba(251, 191, 36, 0.4),
+          rgba(245, 158, 11, 0.4)
+        );
+        color: #b45309;
+        border-color: #f59e0b;
+        font-weight: 800;
+      }
+
+      .data-note {
+        color: #94a3b8;
+        margin-top: 8px;
+        font-size: 0.75rem;
+        line-height: 1.4;
+      }
+
+      body.light-mode .data-note {
+        color: #475569;
+      }
+
+      .pseudocode {
+        background: rgba(30, 27, 75, 0.4);
+        border-radius: 12px;
+        padding: 12px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        overflow-y: auto;
+        height: 240px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        margin-bottom: 10px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+        scroll-behavior: smooth;
+      }
+
+      body.light-mode .pseudocode {
+        background: rgba(241, 245, 249, 0.8);
+        color: #1e293b;
+      }
+
+      .pseudocode::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .pseudocode::-webkit-scrollbar-track {
+        background: rgba(139, 92, 246, 0.1);
+        border-radius: 3px;
+      }
+
+      .pseudocode::-webkit-scrollbar-thumb {
+        background: rgba(139, 92, 246, 0.3);
+        border-radius: 3px;
+      }
+
+      .pseudocode::-webkit-scrollbar-thumb:hover {
+        background: rgba(139, 92, 246, 0.5);
+      }
+
+      .pseudocode-line {
+        padding: 3px 8px;
+        margin: 1px 0;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        position: relative;
+        white-space: nowrap;
+      }
+
+      .pseudocode-line.active {
+        background: linear-gradient(
+          135deg,
+          rgba(139, 92, 246, 0.2),
+          rgba(236, 72, 153, 0.2)
+        );
+        border-left: 3px solid #8b5cf6;
+        transform: translateX(3px);
+        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+      }
+
+      .pseudocode-line.completed {
+        opacity: 0.6;
+      }
+
+      .pseudocode-line.comment {
+        color: #94a3b8;
+        font-style: italic;
+      }
+
+      body.light-mode .pseudocode-line.comment {
+        color: #64748b;
+      }
+
+      .pseudocode-line.keyword {
+        color: #f472b6;
+        font-weight: 600;
+      }
+
+      .pseudocode-line.function {
+        color: #60a5fa;
+        font-weight: 600;
+      }
+
+      .pseudocode-line.variable {
+        color: #fbbf24;
+      }
+
+      .pseudocode-line.number {
+        color: #34d399;
+      }
+
+      .pseudocode-line.operator {
+        color: #a78bfa;
+      }
+
+      .pseudocode-line.indent-1 {
+        margin-left: 20px;
+      }
+
+      .pseudocode-line.indent-2 {
+        margin-left: 40px;
+      }
+
+      .pseudocode-line.indent-3 {
+        margin-left: 60px;
+      }
+
+      .pseudocode-line.indent-4 {
+        margin-left: 80px;
+      }
+
+      .complexity-section {
+        background: rgba(139, 92, 246, 0.05);
+        border-radius: 12px;
+        padding: 12px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        flex: 1;
+        overflow: hidden;
+      }
+
+      body.light-mode .complexity-section {
+        background: rgba(241, 245, 249, 0.5);
+      }
+
+      .complexity-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #a78bfa;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .complexity-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .complexity-item {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        padding: 8px;
+        border: 1px solid rgba(139, 92, 246, 0.1);
+      }
+
+      body.light-mode .complexity-item {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      .complexity-label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      body.light-mode .complexity-label {
+        color: #64748b;
+      }
+
+      .complexity-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #e0e7ff;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      body.light-mode .complexity-value {
+        color: #1e293b;
+      }
+
+      .performance-chart {
+        height: 80px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        padding: 8px;
+        position: relative;
+        margin-top: 8px;
+      }
+
+      .chart-bar {
+        position: absolute;
+        bottom: 8px;
+        width: 25px;
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        border-radius: 4px 4px 0 0;
+        transition: height 0.5s ease;
+      }
+
+      .chart-label {
+        position: absolute;
+        bottom: 0;
+        font-size: 0.55rem;
+        color: #94a3b8;
+        text-align: center;
+        width: 25px;
+      }
+
+      .indicators {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin: 15px 0;
+        flex-wrap: wrap;
+      }
+
+      .indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 20px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+      }
+
+      body.light-mode .indicator {
+        background: rgba(139, 92, 246, 0.05);
+      }
+
+      .indicator-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .indicator-icon.active {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      }
+      .indicator-icon.hit {
+        background: linear-gradient(135deg, #10b981, #059669);
+      }
+      .indicator-icon.miss {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+      }
+      .indicator-icon.success {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+      }
+
+      .indicator-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #94a3b8;
+      }
+
+      body.light-mode .indicator-label {
+        color: #475569;
+      }
+
+      .match-history {
+        margin-top: 10px;
+        padding: 10px;
+        background: rgba(139, 92, 246, 0.05);
+        border-radius: 10px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+      }
+
+      .match-history h4 {
+        color: #a78bfa;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+      }
+
+      .match-item {
+        padding: 6px 10px;
+        margin: 5px 0;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s;
+      }
+
+      .match-item:hover {
+        background: rgba(139, 92, 246, 0.1);
+        transform: translateX(3px);
+      }
+
+      .match-position {
+        font-weight: 700;
+        color: #10b981;
+        font-size: 0.85rem;
+      }
+
+      .match-text {
+        color: #cbd5e1;
+        font-family: "Courier New", monospace;
+        font-size: 0.8rem;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 1200px) {
+        .main-content {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+
+        .metrics {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="theme-switcher"
+      onclick="toggleTheme()"
+      aria-label="Toggle theme"
+    ></div>
+
+    <div class="container">
+      <div class="masthead">
+        <h1>String Matching Visualizer</h1>
+      </div>
+
+      <div class="main-content">
+        <!-- Left Column: Controls -->
+        <div class="panel">
+          <h2 class="panel-title">Controls</h2>
+
+          <div class="field" id="textField">
+            <label for="textSeq">Text Sequence</label>
+            <input
+              type="text"
+              id="textSeq"
+              value="ABABDABACDABABCABAB"
+              aria-label="Text sequence input"
+            />
+            <div class="error-message">Please enter a text sequence</div>
+          </div>
+
+          <div class="field" id="patternField">
+            <label for="patSeq">Pattern Target</label>
+            <input
+              type="text"
+              id="patSeq"
+              value="ABABCABAB"
+              aria-label="Pattern sequence input"
+            />
+            <div class="error-message">Please enter a pattern sequence</div>
+          </div>
+
+          <select
+            class="algo-picker"
+            id="algoPick"
+            aria-label="Select algorithm"
+          >
+            <option value="kmp">KMP Algorithm</option>
+            <option value="bm">Boyer-Moore Algorithm</option>
+          </select>
+
+          <button
+            class="action-btn btn-run"
+            id="runBtn"
+            onclick="toggleRun()"
+            aria-label="Run visualization"
+          >
+            ▶ Run
+          </button>
+
+          <button
+            class="action-btn btn-next"
+            onclick="advance()"
+            aria-label="Next step"
+          >
+            → Next
+          </button>
+
+          <button
+            class="action-btn btn-restart"
+            onclick="restart()"
+            aria-label="Restart visualization"
+          >
+            ⟲ Restart
+          </button>
+
+          <div class="velocity-control">
+            <label for="velSlider">Velocity</label>
+            <input
+              type="range"
+              id="velSlider"
+              min="100"
+              max="2000"
+              value="1000"
+              step="100"
+              oninput="adjustVelocity()"
+              aria-label="Animation speed"
+            />
+            <span class="velocity-display" id="velDisplay" aria-live="polite"
+              >1.0x</span
+            >
+          </div>
+
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-num" id="metricStep" aria-label="Current step">
+                0
+              </div>
+              <div class="metric-name">Step</div>
+            </div>
+            <div class="metric">
+              <div
+                class="metric-num"
+                id="metricComp"
+                aria-label="Number of comparisons"
+              >
+                0
+              </div>
+              <div class="metric-name">Comparisons</div>
+            </div>
+            <div class="metric">
+              <div
+                class="metric-num"
+                id="metricShift"
+                aria-label="Number of shifts"
+              >
+                0
+              </div>
+              <div class="metric-name">Shifts</div>
+            </div>
+            <div class="metric">
+              <div
+                class="metric-num"
+                id="metricMatch"
+                aria-label="Number of matches"
+              >
+                0
+              </div>
+              <div class="metric-name">Matches</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Column: Visualization -->
+        <div class="panel visualization">
+          <h2 class="panel-title">Visualization</h2>
+
+          <div class="stage">
+            <div class="sequence-container">
+              <div
+                class="sequence"
+                id="textSeqDisplay"
+                role="region"
+                aria-label="Text sequence visualization"
+              >
+                <div class="pattern-shift-indicator" id="shiftIndicator"></div>
+              </div>
+              <div
+                class="sequence"
+                id="patSeqDisplay"
+                role="region"
+                aria-label="Pattern sequence visualization"
+              ></div>
+            </div>
+            <div
+              class="broadcast"
+              id="broadcastMsg"
+              role="status"
+              aria-live="polite"
+            >
+              Hit Run to begin visualization
+            </div>
+
+            <div
+              class="indicators"
+              role="list"
+              aria-label="Visualization indicators"
+            >
+              <div class="indicator" role="listitem">
+                <div class="indicator-icon active"></div>
+                <span class="indicator-label">Scanning</span>
+              </div>
+              <div class="indicator" role="listitem">
+                <div class="indicator-icon hit"></div>
+                <span class="indicator-label">Match</span>
+              </div>
+              <div class="indicator" role="listitem">
+                <div class="indicator-icon miss"></div>
+                <span class="indicator-label">Mismatch</span>
+              </div>
+              <div class="indicator" role="listitem">
+                <div class="indicator-icon success"></div>
+                <span class="indicator-label">Found</span>
+              </div>
+            </div>
+
+            <div class="insight">
+              <h4>Analysis</h4>
+              <p id="insightText">
+                Press Run or Next to start the pattern matching visualization
+              </p>
+            </div>
+
+            <div class="match-history hidden" id="matchHistory">
+              <h4>Match History</h4>
+              <div id="matchList"></div>
+            </div>
+          </div>
+
+          <div class="data-section">
+            <h3 class="section-head" id="dataHead">LPS Array</h3>
+            <div class="data-grid" id="dataDisplay"></div>
+            <div class="data-note" id="dataDesc"></div>
+          </div>
+        </div>
+
+        <!-- Right Column: Pseudocode and Complexity -->
+        <div class="panel">
+          <h2 class="panel-title">Pseudocode</h2>
+          <div class="pseudocode" id="pseudocodeContent"></div>
+
+          <div class="complexity-section">
+            <h3 class="complexity-title">Algorithm Complexity</h3>
+            <div class="complexity-grid">
+              <div class="complexity-item">
+                <div class="complexity-label">Time (Best)</div>
+                <div class="complexity-value" id="timeBest">O(n/m)</div>
+              </div>
+              <div class="complexity-item">
+                <div class="complexity-label">Time (Worst)</div>
+                <div class="complexity-value" id="timeWorst">O(nm)</div>
+              </div>
+              <div class="complexity-item">
+                <div class="complexity-label">Space</div>
+                <div class="complexity-value" id="spaceComplexity">O(m)</div>
+              </div>
+              <div class="complexity-item">
+                <div class="complexity-label">Preprocessing</div>
+                <div class="complexity-value" id="preprocessTime">O(m)</div>
+              </div>
+            </div>
+
+            <div class="performance-chart" id="performanceChart">
+              <div
+                class="chart-bar"
+                style="left: 15px; height: 40px"
+                id="bar1"
+              ></div>
+              <div class="chart-label" style="left: 15px">KMP</div>
+              <div
+                class="chart-bar"
+                style="left: 55px; height: 60px"
+                id="bar2"
+              ></div>
+              <div class="chart-label" style="left: 55px">BM</div>
+              <div
+                class="chart-bar"
+                style="left: 95px; height: 80px"
+                id="bar3"
+              ></div>
+              <div class="chart-label" style="left: 95px">Naive</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let textData,
+        patternData,
+        algorithm,
+        running = false,
+        position = 0,
+        steps = [];
+      let velocity = 1000,
+        interval = null,
+        lpsData = [],
+        bcData = {},
+        matchHistory = [];
+
+      function toggleTheme() {
+        document.body.classList.toggle("light-mode");
+        localStorage.setItem(
+          "theme",
+          document.body.classList.contains("light-mode") ? "light" : "dark"
+        );
+      }
+
+      // Load saved theme
+      if (localStorage.getItem("theme") === "light") {
+        document.body.classList.add("light-mode");
+      }
+
+      function validateInputs() {
+        let isValid = true;
+        const textField = document.getElementById("textField");
+        const patternField = document.getElementById("patternField");
+
+        if (!document.getElementById("textSeq").value.trim()) {
+          textField.classList.add("error");
+          isValid = false;
+        } else {
+          textField.classList.remove("error");
+        }
+
+        if (!document.getElementById("patSeq").value.trim()) {
+          patternField.classList.add("error");
+          isValid = false;
+        } else {
+          patternField.classList.remove("error");
+        }
+
+        return isValid;
+      }
+
+      function generateDynamicPseudocode(step) {
+        if (!step) return [];
+
+        const baseCode =
+          algorithm === "kmp"
+            ? [
+                { type: "comment", text: "// KMP Algorithm", indent: 0 },
+                { type: "keyword", text: "function", indent: 0 },
+                { type: "function", text: "search(text, pattern)", indent: 0 },
+                {
+                  type: "variable",
+                  text: "lps = buildLPS(pattern)",
+                  indent: 1,
+                },
+                { type: "variable", text: "i = 0, j = 0", indent: 1 },
+                { type: "keyword", text: "while", indent: 1 },
+                { type: "variable", text: "i < text.length", indent: 1 },
+                { type: "keyword", text: "if", indent: 2 },
+                { type: "variable", text: "pattern[j] == text[i]", indent: 2 },
+                { type: "variable", text: "i++, j++", indent: 3 },
+                { type: "keyword", text: "if", indent: 3 },
+                { type: "variable", text: "j == pattern.length", indent: 3 },
+                { type: "function", text: "found(i-j)", indent: 4 },
+                { type: "variable", text: "j = lps[j-1]", indent: 4 },
+                { type: "keyword", text: "else", indent: 2 },
+                { type: "keyword", text: "if", indent: 3 },
+                { type: "variable", text: "j > 0", indent: 3 },
+                { type: "variable", text: "j = lps[j-1]", indent: 4 },
+                { type: "keyword", text: "else", indent: 3 },
+                { type: "variable", text: "i++", indent: 4 },
+              ]
+            : [
+                {
+                  type: "comment",
+                  text: "// Boyer-Moore Algorithm",
+                  indent: 0,
+                },
+                { type: "keyword", text: "function", indent: 0 },
+                { type: "function", text: "search(text, pattern)", indent: 0 },
+                {
+                  type: "variable",
+                  text: "badChar = buildBadChar(pattern)",
+                  indent: 1,
+                },
+                {
+                  type: "variable",
+                  text: "s = 0, m = pattern.length",
+                  indent: 1,
+                },
+                { type: "keyword", text: "while", indent: 1 },
+                { type: "variable", text: "s <= text.length - m", indent: 1 },
+                { type: "variable", text: "j = m-1", indent: 2 },
+                { type: "keyword", text: "while", indent: 2 },
+                {
+                  type: "variable",
+                  text: "j >= 0 && pattern[j] == text[s+j]",
+                  indent: 2,
+                },
+                { type: "variable", text: "j--", indent: 3 },
+                { type: "keyword", text: "if", indent: 2 },
+                { type: "variable", text: "j < 0", indent: 2 },
+                { type: "function", text: "found(s)", indent: 3 },
+                { type: "variable", text: "s++", indent: 3 },
+                { type: "keyword", text: "else", indent: 2 },
+                {
+                  type: "variable",
+                  text: "s += max(1, j - badChar[text[s+j]])",
+                  indent: 3,
+                },
+              ];
+
+        // Insert dynamic values based on current step
+        const dynamicCode = baseCode.map((line) => {
+          const newLine = { ...line };
+
+          if (algorithm === "kmp") {
+            if (
+              line.text.includes("i = 0, j = 0") &&
+              step.txtIdx !== undefined
+            ) {
+              newLine.text = `i = ${step.txtIdx}, j = ${step.patIdx}`;
+            } else if (
+              line.text.includes("pattern[j] == text[i]") &&
+              step.txtIdx !== undefined
+            ) {
+              newLine.text = `pattern[${step.patIdx}] == text[${step.txtIdx}]`;
+            } else if (
+              line.text.includes("j = lps[j-1]") &&
+              step.lpsHL !== undefined &&
+              step.lpsHL > 0
+            ) {
+              newLine.text = `j = lps[${step.lpsHL - 1}] = ${
+                lpsData[step.lpsHL - 1]
+              }`;
+            } else if (
+              line.text.includes("found(i-j)") &&
+              step.offset !== undefined
+            ) {
+              newLine.text = `found(${step.offset})`;
+            }
+          } else {
+            if (
+              line.text.includes("s = 0, m = pattern.length") &&
+              step.offset !== undefined
+            ) {
+              newLine.text = `s = ${step.offset}, m = ${patternData.length}`;
+            } else if (
+              line.text.includes("j = m-1") &&
+              step.patIdx !== undefined
+            ) {
+              newLine.text = `j = ${step.patIdx}`;
+            } else if (
+              line.text.includes("pattern[j] == text[s+j]") &&
+              step.txtIdx !== undefined
+            ) {
+              newLine.text = `pattern[${step.patIdx}] == text[${step.txtIdx}]`;
+            } else if (
+              line.text.includes("s += max(1, j - badChar[text[s+j]])") &&
+              step.computedShift !== undefined
+            ) {
+              const ch = step.bcHL || "?";
+              newLine.text = `s += max(1, ${step.patIdx} - badChar['${ch}']) = ${step.computedShift}`;
+            } else if (
+              line.text.includes("found(s)") &&
+              step.offset !== undefined
+            ) {
+              newLine.text = `found(${step.offset})`;
+            }
+          }
+
+          return newLine;
+        });
+
+        return dynamicCode;
+      }
+
+      function renderPseudocode() {
+        const container = document.getElementById("pseudocodeContent");
+        const step = steps[position];
+        const code = generateDynamicPseudocode(step);
+
+        // Find the active line based on current operation
+        let activeLineIndex = 0;
+        if (step) {
+          if (algorithm === "kmp") {
+            if (step.match) {
+              activeLineIndex = 7; // pattern[j] == text[i] line
+            } else {
+              if (step.patIdx > 0) {
+                activeLineIndex = 11; // j = lps[j-1] line
+              } else {
+                activeLineIndex = 14; // i++ line
+              }
+            }
+          } else {
+            if (step.match) {
+              activeLineIndex = 7; // pattern[j] == text[s+j] line
+            } else {
+              if (step.patIdx < 0) {
+                activeLineIndex = 10; // found(s) line
+              } else {
+                activeLineIndex = 13; // shift calculation line
+              }
+            }
+          }
+        }
+
+        container.innerHTML = code
+          .map((line, index) => {
+            let className = `pseudocode-line indent-${line.indent}`;
+            if (index === activeLineIndex) {
+              className += " active";
+            } else if (index < activeLineIndex) {
+              className += " completed";
+            }
+
+            return `<div class="${className} ${line.type}" id="pseudocode-line-${index}">${line.text}</div>`;
+          })
+          .join("");
+
+        // Auto-scroll to active line
+        setTimeout(() => {
+          const activeLine = document.getElementById(
+            `pseudocode-line-${activeLineIndex}`
+          );
+          if (activeLine) {
+            activeLine.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 50);
+      }
+
+      function updateComplexityInfo() {
+        if (algorithm === "kmp") {
+          document.getElementById("timeBest").textContent = "O(n)";
+          document.getElementById("timeWorst").textContent = "O(n)";
+          document.getElementById("spaceComplexity").textContent = "O(m)";
+          document.getElementById("preprocessTime").textContent = "O(m)";
+
+          // Update chart bars
+          document.getElementById("bar1").style.height = "50px";
+          document.getElementById("bar2").style.height = "70px";
+          document.getElementById("bar3").style.height = "90px";
+        } else if (algorithm === "bm") {
+          document.getElementById("timeBest").textContent = "O(n/m)";
+          document.getElementById("timeWorst").textContent = "O(nm)";
+          document.getElementById("spaceComplexity").textContent = "O(k)";
+          document.getElementById("preprocessTime").textContent = "O(m+k)";
+
+          // Update chart bars
+          document.getElementById("bar1").style.height = "70px";
+          document.getElementById("bar2").style.height = "30px";
+          document.getElementById("bar3").style.height = "90px";
+        }
+      }
+
+      function adjustVelocity() {
+        velocity = parseInt(document.getElementById("velSlider").value);
+        document.getElementById("velDisplay").textContent =
+          ((2100 - velocity) / 1000).toFixed(1) + "x";
+      }
+
+      function buildLPS(seq) {
+        const lps = Array(seq.length).fill(0);
+        let len = 0,
+          i = 1;
+        while (i < seq.length) {
+          if (seq[i] === seq[len]) {
+            lps[i++] = ++len;
+          } else {
+            if (len) len = lps[len - 1];
+            else lps[i++] = 0;
+          }
+        }
+        return lps;
+      }
+
+      function buildBC(seq) {
+        const map = {};
+        for (let i = 0; i < seq.length; i++) {
+          map[seq[i]] = i;
+        }
+        return map;
+      }
+
+      function createKMPSteps() {
+        const result = [];
+        lpsData = buildLPS(patternData);
+        let i = 0,
+          j = 0,
+          found = [],
+          comps = 0,
+          shifts = 0;
+
+        while (i < textData.length) {
+          comps++;
+          const match = textData[i] === patternData[j];
+          const exp = match
+            ? `✓ Match: <span class="accent">${textData[i]}</span> = <span class="accent">${patternData[j]}</span>`
+            : `✗ Mismatch: <span class="accent">${
+                textData[i]
+              }</span> ≠ <span class="accent">${patternData[j]}</span>. ${
+                j > 0 ? `Use LPS[${j - 1}]` : "Move text"
+              }`;
+
+          result.push({
+            txtIdx: i,
+            patIdx: j,
+            offset: i - j,
+            comparing: true,
+            match,
+            msg: `Compare t[${i}] with p[${j}]`,
+            exp,
+            comps,
+            shifts,
+            found: found.length,
+            lpsHL: j,
+          });
+
+          if (match) {
+            i++;
+            j++;
+          }
+
+          if (j === patternData.length) {
+            found.push(i - j);
+            result.push({
+              txtIdx: i - 1,
+              patIdx: j - 1,
+              offset: i - j,
+              complete: true,
+              msg: `🎉 Found at ${i - j}!`,
+              exp: `<strong>Success!</strong> Complete match`,
+              comps,
+              shifts,
+              found: found.length,
+              lpsHL: j - 1,
+            });
+            j = lpsData[j - 1];
+            shifts++;
+          } else if (i < textData.length && !match) {
+            if (j !== 0) {
+              shifts++;
+              j = lpsData[j - 1];
+            } else i++;
+          }
+        }
+        return result;
+      }
+
+      function createBMSteps() {
+        const result = [];
+        bcData = buildBC(patternData);
+        let s = 0,
+          found = [],
+          comps = 0,
+          shifts = 0;
+        const m = patternData.length;
+
+        while (s <= textData.length - m) {
+          let j = m - 1;
+
+          while (j >= 0) {
+            comps++;
+            const txtIdx = s + j;
+            const match = textData[txtIdx] === patternData[j];
+            const ch = textData[txtIdx];
+            const lastOcc = ch in bcData ? bcData[ch] : -1;
+            const shiftAmount = Math.max(1, j - lastOcc);
+
+            const exp = match
+              ? `✓ Match: <span class="accent">${textData[txtIdx]}</span> = <span class="accent">${patternData[j]}</span>`
+              : `✗ Mismatch: <span class="accent">${ch}</span> ≠ <span class="accent">${patternData[j]}</span>. Shift ${shiftAmount}`;
+
+            result.push({
+              txtIdx,
+              patIdx: j,
+              offset: s,
+              comparing: true,
+              match,
+              msg: `Compare t[${txtIdx}] with p[${j}]`,
+              exp,
+              comps,
+              shifts,
+              found: found.length,
+              bcHL: ch,
+              computedShift: shiftAmount,
+              lastOcc,
+            });
+
+            if (!match) break;
+            j--;
+          }
+
+          if (j < 0) {
+            found.push(s);
+            result.push({
+              txtIdx: s,
+              patIdx: 0,
+              offset: s,
+              complete: true,
+              msg: `🎉 Found at ${s}!`,
+              exp: `<strong>Success!</strong> Complete match`,
+              comps,
+              shifts,
+              found: found.length,
+            });
+            s++;
+            shifts++;
+          } else {
+            const ch = textData[s + j];
+            const lastOcc = ch in bcData ? bcData[ch] : -1;
+            const shiftAmount = Math.max(1, j - lastOcc);
+            s += shiftAmount;
+            shifts++;
+          }
+        }
+        return result;
+      }
+
+      function renderLPS() {
+        let html = "<table><tr><th>Idx</th>";
+        for (let i = 0; i < patternData.length; i++) html += `<th>${i}</th>`;
+        html += "</tr><tr><th>Pat</th>";
+        for (let i = 0; i < patternData.length; i++)
+          html += `<td>${patternData[i]}</td>`;
+        html += "</tr><tr><th>LPS</th>";
+        for (let i = 0; i < lpsData.length; i++) {
+          const cls = steps[position]?.lpsHL === i ? ' class="spotlight"' : "";
+          html += `<td${cls}>${lpsData[i]}</td>`;
+        }
+        html += "</tr></table>";
+        document.getElementById("dataDisplay").innerHTML = html;
+        document.getElementById("dataDesc").textContent =
+          "LPS[i] = longest proper prefix that is also suffix";
+      }
+
+      function renderBC() {
+        const chars = Object.keys(bcData).sort();
+        let html = "<table><tr><th>Char</th>";
+        for (const c of chars) html += `<th>${c}</th>`;
+        html += "<th>Other</th></tr><tr><th>Last</th>";
+        for (const c of chars) {
+          const cls = steps[position]?.bcHL === c ? ' class="spotlight"' : "";
+          const val = bcData[c];
+          html += `<td${cls}>${val}</td>`;
+        }
+        html += `<td>-1</td></tr></table>`;
+        document.getElementById("dataDisplay").innerHTML = html;
+        document.getElementById("dataDesc").textContent =
+          "Bad Character: last occurrence index for shifts";
+      }
+
+      function updateMatchHistory() {
+        if (matchHistory.length > 0) {
+          document.getElementById("matchHistory").classList.remove("hidden");
+          const matchList = document.getElementById("matchList");
+          matchList.innerHTML = matchHistory
+            .map(
+              (pos) => `
+            <div class="match-item">
+              <span class="match-position">Pos: ${pos}</span>
+              <span class="match-text">${textData.substring(
+                pos,
+                pos + patternData.length
+              )}</span>
+            </div>
+          `
+            )
+            .join("");
+        }
+      }
+
+      function scrollToActiveToken() {
+        if (!steps.length) return;
+
+        const step = steps[position];
+        const stage = document.querySelector(".stage");
+        const activeToken = document.querySelector(
+          ".token.active, .token.hit, .token.miss"
+        );
+
+        if (activeToken && stage) {
+          // Calculate the position of the active token relative to the stage
+          const tokenRect = activeToken.getBoundingClientRect();
+          const stageRect = stage.getBoundingClientRect();
+
+          // Calculate how much to scroll to center the token
+          const scrollLeft =
+            tokenRect.left -
+            stageRect.left -
+            stageRect.width / 2 +
+            tokenRect.width / 2;
+
+          // Smooth scroll to the calculated position
+          stage.scrollTo({
+            left: stage.scrollLeft + scrollLeft,
+            behavior: "smooth",
+          });
+        }
+      }
+
+      function visualize() {
+        if (!steps.length) return;
+
+        const step = steps[position];
+
+        // Update pattern shift indicator
+        const shiftIndicator = document.getElementById("shiftIndicator");
+        if (step.offset !== undefined) {
+          shiftIndicator.style.left = `${step.offset * 45 + 22.5}px`;
+          shiftIndicator.style.width = `${
+            patternData.length * 45 + (patternData.length - 1) * 5
+          }px`;
+          shiftIndicator.classList.add("active");
+        }
+
+        let txtHTML = "";
+        for (let i = 0; i < textData.length; i++) {
+          let cls = "token";
+          if (
+            step.complete &&
+            i >= step.offset &&
+            i < step.offset + patternData.length
+          ) {
+            cls += " success";
+          } else if (i === step.txtIdx && step.comparing) {
+            cls += step.match ? " hit" : " miss";
+          } else if (i === step.txtIdx) {
+            cls += " active";
+          }
+          txtHTML += `<div class="${cls}">${textData[i]}<div class="pos">${i}</div></div>`;
+        }
+        document.getElementById("textSeqDisplay").innerHTML =
+          txtHTML +
+          '<div class="pattern-shift-indicator" id="shiftIndicator"></div>';
+
+        let patHTML = "";
+        for (let i = 0; i < step.offset; i++) {
+          patHTML += '<div class="token" style="opacity:0">.</div>';
+        }
+        for (let i = 0; i < patternData.length; i++) {
+          let cls = "token";
+          if (i === step.patIdx && step.comparing) {
+            cls += step.match ? " hit" : " miss";
+          }
+          patHTML += `<div class="${cls}">${patternData[i]}<div class="pos">${i}</div></div>`;
+        }
+        document.getElementById("patSeqDisplay").innerHTML = patHTML;
+
+        document.getElementById("broadcastMsg").textContent = step.msg;
+        document.getElementById("insightText").innerHTML = step.exp;
+        document.getElementById("metricStep").textContent = `${position + 1}/${
+          steps.length
+        }`;
+        document.getElementById("metricComp").textContent = step.comps || 0;
+        document.getElementById("metricShift").textContent = step.shifts || 0;
+        document.getElementById("metricMatch").textContent = step.found || 0;
+
+        if (algorithm === "kmp") renderLPS();
+        else if (algorithm === "bm") renderBC();
+
+        // Update dynamic pseudocode
+        renderPseudocode();
+
+        // Scroll to active token
+        setTimeout(scrollToActiveToken, 100);
+
+        // Update match history when a complete match is found
+        if (step.complete && step.offset !== undefined) {
+          if (!matchHistory.includes(step.offset)) {
+            matchHistory.push(step.offset);
+            updateMatchHistory();
+          }
+        }
+      }
+
+      function restart() {
+        if (!validateInputs()) {
+          document.getElementById("broadcastMsg").textContent =
+            "Please enter both text and pattern";
+          return;
+        }
+
+        textData = document.getElementById("textSeq").value;
+        patternData = document.getElementById("patSeq").value;
+        algorithm = document.getElementById("algoPick").value;
+        position = 0;
+        running = false;
+        matchHistory = [];
+
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
+
+        const btn = document.getElementById("runBtn");
+        btn.textContent = "▶ Run";
+        btn.className = "action-btn btn-run";
+
+        if (algorithm === "kmp") {
+          steps = createKMPSteps();
+          document.getElementById("dataHead").textContent = "📊 LPS Array";
+        } else if (algorithm === "bm") {
+          steps = createBMSteps();
+          document.getElementById("dataHead").textContent =
+            "📊 Bad Character Table";
+        }
+
+        // Update complexity info
+        updateComplexityInfo();
+
+        // Hide match history initially
+        document.getElementById("matchHistory").classList.add("hidden");
+
+        if (steps.length) {
+          visualize();
+        } else {
+          document.getElementById("broadcastMsg").textContent =
+            "No steps to visualize";
+        }
+      }
+
+      function toggleRun() {
+        if (!steps.length) restart();
+
+        running = !running;
+        const btn = document.getElementById("runBtn");
+
+        if (running) {
+          btn.textContent = "⏸ Halt";
+          btn.className = "action-btn btn-halt";
+          interval = setInterval(() => {
+            if (position < steps.length - 1) {
+              position++;
+              visualize();
+            } else {
+              toggleRun();
+            }
+          }, velocity);
+        } else {
+          btn.textContent = "▶ Run";
+          btn.className = "action-btn btn-run";
+          if (interval) {
+            clearInterval(interval);
+            interval = null;
+          }
+        }
+      }
+
+      function advance() {
+        if (!steps.length) restart();
+        if (position < steps.length - 1) {
+          position++;
+          visualize();
+        }
+      }
+
+      // Event listeners
+      document.getElementById("textSeq").addEventListener("change", restart);
+      document.getElementById("patSeq").addEventListener("change", restart);
+      document.getElementById("algoPick").addEventListener("change", restart);
+
+      // Initialize on load
+      window.onload = function () {
+        restart();
+      };
+    </script>
+  </body>
+</html>
